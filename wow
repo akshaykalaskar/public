@@ -1,136 +1,138 @@
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-const LiveReloadPlugin = require('@kooneko/livereload-webpack-plugin');
-const CompressionPlugin = require('compression-webpack-plugin');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const zlib = require('zlib');
 
-module.exports = (env, argv) => {
-  const pluginsToAdd = [];
-  const webpackMode = argv.mode;
+Certainly! Creating a High-Level Design (HLD) document involves outlining the overall architecture and approach for implementing the feature. Below is a template for an HLD document tailored to your requirements.
 
-  pluginsToAdd.push(
-    new HtmlWebpackPlugin({
-      template: './src/index.html',
-      filename: 'index.html',
-      baseUrl: './'
-    })
+High-Level Design Document for "Decision Notice" Feature
+1. Introduction
+1.1. Purpose
+This document outlines the high-level design for the "Decision Notice" feature in the ReactJS application. This feature involves displaying a 'decision notice' link conditionally with submitted cases and opening a new window to show decision-related information, which the user can print.
+
+1.2. Scope
+Conditional display of 'Decision Notice' link.
+Opening a new window with decision information.
+Integration with Pega to fetch decision details.
+Printing capability of the decision notice.
+2. Requirements
+2.1. Functional Requirements
+Display the 'Decision Notice' link conditionally based on a flag from the UI team.
+On clicking the 'Decision Notice' link, open a new window displaying decision details.
+The new window should allow the user to print the decision notice.
+2.2. Non-Functional Requirements
+Ensure cross-browser compatibility.
+Maintain responsiveness and performance.
+Secure the data fetched from Pega.
+3. Architecture
+3.1. Component Structure
+CaseListComponent: Component to list all submitted cases.
+DecisionNoticeLinkComponent: Component to render the 'Decision Notice' link conditionally.
+DecisionNoticeWindowComponent: Component to display decision details in a new window.
+3.2. Data Flow
+CaseListComponent: Fetches the list of cases and the flag indicating whether to display the 'Decision Notice' link.
+DecisionNoticeLinkComponent: Renders the 'Decision Notice' link if the flag is true.
+DecisionNoticeWindowComponent: Fetches decision details from Pega when the link is clicked and displays them in a new window with printing capability.
+4. Design
+4.1. Conditional Display of 'Decision Notice' Link
+Fetch the flag from the API response in the CaseListComponent.
+Pass the flag to the DecisionNoticeLinkComponent.
+Use conditional rendering to display the link based on the flag.
+javascript
+Copy code
+// CaseListComponent.js
+const CaseListComponent = () => {
+  const [cases, setCases] = useState([]);
+  const [showDecisionNotice, setShowDecisionNotice] = useState(false);
+
+  useEffect(() => {
+    // Fetch cases and flag from API
+    fetchCases().then(response => {
+      setCases(response.cases);
+      setShowDecisionNotice(response.showDecisionNotice);
+    });
+  }, []);
+
+  return (
+    <div>
+      {cases.map(case => (
+        <CaseItem key={case.id} case={case} showDecisionNotice={showDecisionNotice} />
+      ))}
+    </div>
   );
+};
 
-  pluginsToAdd.push(
-    new CopyWebpackPlugin({
-      patterns: [
-        { from: './sdk-config.json', to: './' },
-        { from: './sdk-local-component-map.js', to: './' },
-        { from: './node_modules/@pega/auth/lib/oauth-client/authDone.html', to: './auth.html' },
-        { from: './node_modules/@pega/auth/lib/oauth-client/authDone.js', to: './' },
-        { from: './node_modules/govuk-frontend/dist/govuk/assets/images', to: 'assets/images/' },
-        { from: './node_modules/govuk-frontend/dist/govuk/assets/fonts', to: 'assets/fonts/' },
-        { from: './assets/icons/*', to: 'constellation/icons/[name].[ext]' },
-        { from: './assets/css/*', to: './' },
-        { from: './assets/img/*', to: './' },
-        { from: './node_modules/tinymce', to: './tinymce' },
-        { from: './node_modules/@pega/constellationjs/dist/bootstrap-shell.js', to: './constellation' },
-        { from: './node_modules/@pega/constellationjs/dist/bootstrap-shell.*.*', to: 'constellation/[name].[ext]' },
-        { from: './node_modules/@pega/constellationjs/dist/lib_asset.json', to: './constellation' },
-        { from: './node_modules/@pega/constellationjs/dist/constellation-core.*.*', to: 'constellation/prerequisite/[name].[ext]' },
-        { from: './assets/i18n/*', to: './' },
-        { from: './assets/lib/*', to: './' }
-      ]
-    })
-  );
-
-  pluginsToAdd.push(
-    new MiniCssExtractPlugin({
-      filename: 'assets/appStyles.css'
-    })
-  );
-
-  if (webpackMode === 'production') {
-    pluginsToAdd.push(
-      new CompressionPlugin({
-        filename: '[path][base].gz',
-        algorithm: 'gzip',
-        test: /\.js$|\.ts$|\.css$|\.html$/,
-        exclude: /constellation-core.*.js|bootstrap-shell.js/,
-        threshold: 10240,
-        minRatio: 0.8
-      })
-    );
-    pluginsToAdd.push(
-      new CompressionPlugin({
-        filename: '[path][base].br',
-        algorithm: 'brotliCompress',
-        test: /\.(js|ts|css|html|svg)$/,
-        exclude: /constellation-core.*.js|bootstrap-shell.js/,
-        compressionOptions: {
-          params: {
-            [zlib.constants.BROTLI_PARAM_QUALITY]: 11
-          }
-        },
-        threshold: 10240,
-        minRatio: 0.8
-      })
-    );
-  }
-
-  let publicPathValue = '';
-  if (webpackMode === 'development') {
-    const liveReloadOptions = {
-      protocol: 'http',
-      appendScriptTag: true,
-      delay: 1000,
-      hostname: 'localhost'
-    };
-    pluginsToAdd.push(new LiveReloadPlugin(liveReloadOptions));
-    publicPathValue = '/';
-  }
-
-  const config = {
-    mode: 'development',
-    entry: {
-      default: './src/index.tsx',
-      hicbc: './src/index.tsx',
-      education: './src/index.tsx'
-    },
-    devServer: {
-      static: path.join(__dirname, 'dist'),
-      historyApiFallback: true,
-      host: 'localhost',
-      port: 3502,
-      open: false
-    },
-    devtool: argv.mode === 'production' ? false : 'inline-source-map',
-    plugins: pluginsToAdd,
-    output: {
-      filename: '[name].bundle.js',
-      path: path.resolve(__dirname, 'dist'),
-      publicPath: publicPathValue
-    },
-    module: {
-      rules: [
-        { test: /\.tsx?$/, use: 'ts-loader', exclude: /node_modules/ },
-        { test: /\.jsx?$/, use: 'ts-loader', exclude: /node_modules/ },
-        { test: /\.css$/, include: [path.resolve(__dirname, 'src'), path.resolve(__dirname, 'node_modules/react-datepicker'), path.resolve(__dirname, 'node_modules/@pega/react-sdk-components/lib')], use: ['style-loader', 'css-loader'] },
-        { test: /\.s[a|c]ss$/, use: [{ loader: MiniCssExtractPlugin.loader }, { loader: 'css-loader' }, { loader: 'sass-loader' }] },
-        { test: /\.(png|gif|jpg|cur)$/i, loader: 'url-loader', options: { limit: 8192 } },
-        { test: /\.woff2(\?v=[0-9]\.[0-9]\.[0-9])?$/i, loader: 'url-loader', options: { mimetype: 'application/font-woff2' } },
-        { test: /\.woff(\?v=[0-9]\.[0-9]\.[0-9])?$/i, loader: 'url-loader', options: { mimetype: 'application/font-woff' } },
-        { test: /\.(ttf|eot|svg|otf)(\?v=[0-9]\.[0-9]\.[0-9])?$/i, loader: 'file-loader' },
-        { test: /\.(d.ts)$/, loader: 'null-loader' },
-        { test: /\.(map)$/, loader: 'null-loader' }
-      ]
-    },
-    resolve: {
-      extensions: ['.tsx', '.ts', '.js', '.jsx']
-    }
+// CaseItem.js
+const CaseItem = ({ case, showDecisionNotice }) => (
+  <div>
+    <div>{case.title}</div>
+    {showDecisionNotice && <DecisionNoticeLink caseId={case.id} />}
+  </div>
+);
+4.2. Opening New Window with Decision Details
+Create a new component DecisionNoticeWindowComponent.
+On click of the link, open a new window and render the DecisionNoticeWindowComponent in it.
+javascript
+Copy code
+// DecisionNoticeLink.js
+const DecisionNoticeLink = ({ caseId }) => {
+  const handleClick = () => {
+    const newWindow = window.open('', '_blank');
+    newWindow.document.write('<div id="decision-notice-root"></div>');
+    newWindow.document.close();
+    ReactDOM.render(<DecisionNoticeWindow caseId={caseId} />, newWindow.document.getElementById('decision-notice-root'));
   };
 
-  if (webpackMode === 'development') {
-    config.output.publicPath = publicPathValue;
-  }
-
-  return config;
+  return <button onClick={handleClick}>Decision Notice</button>;
 };
+
+// DecisionNoticeWindow.js
+const DecisionNoticeWindow = ({ caseId }) => {
+  const [decisionDetails, setDecisionDetails] = useState(null);
+
+  useEffect(() => {
+    // Fetch decision details from Pega
+    fetchDecisionDetails(caseId).then(details => setDecisionDetails(details));
+  }, [caseId]);
+
+  return (
+    <div>
+      {decisionDetails ? (
+        <div>
+          <h1>Decision Notice</h1>
+          <p>{decisionDetails}</p>
+          <button onClick={() => window.print()}>Print</button>
+        </div>
+      ) : (
+        <p>Loading...</p>
+      )}
+    </div>
+  );
+};
+4.3. Integration with Pega
+Use an API endpoint to fetch the flag and decision details from Pega.
+Ensure secure communication and handle any potential errors.
+javascript
+Copy code
+// api.js
+export const fetchCases = async () => {
+  const response = await fetch('/api/cases');
+  return response.json();
+};
+
+export const fetchDecisionDetails = async (caseId) => {
+  const response = await fetch(`/api/decision-details/${caseId}`);
+  return response.json();
+};
+5. Security Considerations
+Ensure that the API endpoints are secured and authenticated.
+Validate the data received from Pega.
+6. Performance Considerations
+Lazy load the decision details only when the 'Decision Notice' link is clicked.
+Optimize rendering to prevent performance bottlenecks.
+7. Testing
+Unit tests for each component.
+Integration tests for the entire feature.
+Manual testing across different browsers and devices.
+8. Deployment
+Deploy the changes to a staging environment for QA.
+Monitor the feature for any issues post-deployment.
+This HLD provides a comprehensive overview of the implementation strategy for the 'Decision Notice' feature. Adjustments can be made as necessary based on specific project needs and feedback from the development team
+
+https://chatgpt.com/share/4d52b2a5-7802-4d96-99db-1cb9391aa517
